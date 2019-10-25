@@ -19,19 +19,19 @@ FOUNDATION_EXPORT const int64_t SDWebImageProgressUnitCountUnknown; /* 1LL */
 
 typedef void(^SDSetImageBlock)(UIImage * _Nullable image, NSData * _Nullable imageData, SDImageCacheType cacheType, NSURL * _Nullable imageURL);
 
-/**
+/** 集成 SDWebImage异步下载 和 缓存的远程图像 UIView子类
  Integrates SDWebImage async downloading and caching of remote images with UIView subclass.
  */
 @interface UIView (WebCache)
 
-/**
+/** 当前图片的 URL
  * Get the current image URL.
  *
  * @note Note that because of the limitations of categories this property can get out of sync if you use setImage: directly.
  */
 @property (nonatomic, strong, readonly, nullable) NSURL *sd_imageURL;
 
-/**
+/** 当前图片的加载进度
  * The current image loading progress associated to the view. The unit count is the received size and excepted size of download.
  * The `totalUnitCount` and `completedUnitCount` will be reset to 0 after a new image loading start (change from current queue). And they will be set to `SDWebImageProgressUnitCountUnknown` if the progressBlock not been called but the image loading success to mark the progress finished (change from main queue).
  * @note You can use Key-Value Observing on the progress, but you should take care that the change to progress is from a background queue during download(the same as progressBlock). If you want to using KVO and update the UI, make sure to dispatch on the main queue. And it's recommand to use some KVO libs like KVOController because it's more safe and easy to use.
@@ -81,7 +81,7 @@ typedef void(^SDSetImageBlock)(UIImage * _Nullable image, NSData * _Nullable ima
 
 #pragma mark - Image Transition
 
-/**
+/** 图像加载完以后 过渡动画
  The image transition when image load finished. See `SDWebImageTransition`.
  If you specify nil, do not do transition. Defautls to nil.
  */

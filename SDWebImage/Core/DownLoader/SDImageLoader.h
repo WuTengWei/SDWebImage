@@ -69,7 +69,7 @@ FOUNDATION_EXPORT UIImage * _Nullable SDImageLoaderDecodeProgressiveImageData(NS
  */
 - (BOOL)canRequestImageForURL:(nullable NSURL *)url;
 
-/**
+/** 用给定的URL加载图像和图像数据并返回图像数据
  Load the image and image data with the given URL and return the image data. You're responsible for producing the image instance.
 
  @param url The URL represent the image. Note this may not be a HTTP URL

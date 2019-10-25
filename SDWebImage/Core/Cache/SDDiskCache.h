@@ -101,6 +101,13 @@
 
 /**
  The built-in disk cache.
+ * 使用 NSFileManager 管理图片缓存
+ * 根据 `key` 在它 SDDiskCacheFileNameForKey 方法中，使用 `CC_MD5` 生成一个 新的  `Key`, 转换成 url，存放 data.
+ * 还有一点就是清理过期的数据，有两种方式
+     1. SDImageCacheConfigExpireTypeAccessDate 根据访问时间
+     2. SDImageCacheConfigExpireTypeModificationDate 修改时间（默认）
+     3. 根据 self.config.maxDiskAge 来对比删除超过时间的图片
+     4. 根据 self.config.maxDiskSize 来删除磁盘缓存的数据，清理到self.config.maxDiskSize /2 为止.
  */
 @interface SDDiskCache : NSObject <SDDiskCache>
 /**

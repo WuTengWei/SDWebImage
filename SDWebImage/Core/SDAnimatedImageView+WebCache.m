@@ -60,6 +60,7 @@
     } else {
         mutableContext = [NSMutableDictionary dictionary];
     }
+    //SDWebImageContextAnimatedImageClass 用于使用 SDAnimatedImageView 来改善动画图像渲染性能（尤其是大动画图像上的内存使用）
     mutableContext[SDWebImageContextAnimatedImageClass] = animatedImageClass;
     [self sd_internalSetImageWithURL:url
                     placeholderImage:placeholder

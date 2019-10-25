@@ -17,6 +17,14 @@ typedef NSMapTable<NSString *, id<SDWebImageOperation>> SDOperationsDictionary;
 
 @implementation UIView (WebCacheOperation)
 
+/*
+  每一个视图的实例和它正在进行的操作(下载 和 缓存 的组合操作)绑定起来,实现操作和视图一一对应关系,以便可以随时拿到视图正在进行的操作,控制其取消等
+  它对应的绑定在UIView的属性是 sd_operationDictionary (NSMapTable类型)
+  operationDictionary的value是操作,key是针对不同类型视图和不同类型的操作设定的字符串
+  注意:&是一元运算符结果是右操作对象的地址(&loadOperationKey返回static char loadOperationKey的地址)
+ */
+
+// 返回当 View 绑定的 MapTable
 - (SDOperationsDictionary *)sd_operationDictionary {
     @synchronized(self) {
         SDOperationsDictionary *operations = objc_getAssociatedObject(self, &loadOperationKey);
@@ -52,13 +60,18 @@ typedef NSMapTable<NSString *, id<SDWebImageOperation>> SDOperationsDictionary;
     }
 }
 
+// 根据这个 key 找到当前 view 上面的所有操作并取消
 - (void)sd_cancelImageLoadOperationWithKey:(nullable NSString *)key {
     if (key) {
         // Cancel in progress downloader from queue
+        // 取消正在下载的队列
+        // NSMapTable
+        // 如果 operationDictionary可以取到,根据key可以得到与视图相关的操作,取消他们,并根据key值,从operationDictionary里面删除这些操作
         SDOperationsDictionary *operationDictionary = [self sd_operationDictionary];
         id<SDWebImageOperation> operation;
         
         @synchronized (self) {
+            //operation  SDWebImageCombinedOperation 类型
             operation = [operationDictionary objectForKey:key];
         }
         if (operation) {

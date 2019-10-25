@@ -43,6 +43,16 @@
 
 @implementation MasterViewController
 
+- (void)viewDidLoad {
+    [super viewDidLoad];
+//    NSLog(@" 111 %@",[NSThread currentThread]);
+//    dispatch_async(dispatch_get_main_queue(), ^{
+//       NSLog(@"222 %@",[NSThread currentThread]);
+//    });
+
+
+}
+
 - (instancetype)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil {
     self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
     if (self) {

@@ -51,10 +51,12 @@ static void * SDMemoryCacheContext = &SDMemoryCacheContext;
 }
 
 - (void)commonInit {
+    // 设置默认的 config 
     SDImageCacheConfig *config = self.config;
     self.totalCostLimit = config.maxMemoryCost;
     self.countLimit = config.maxMemoryCount;
     
+    // 监听 maxMemoryCost  maxMemoryCount
     [config addObserver:self forKeyPath:NSStringFromSelector(@selector(maxMemoryCost)) options:0 context:SDMemoryCacheContext];
     [config addObserver:self forKeyPath:NSStringFromSelector(@selector(maxMemoryCount)) options:0 context:SDMemoryCacheContext];
     
@@ -62,6 +64,7 @@ static void * SDMemoryCacheContext = &SDMemoryCacheContext;
     self.weakCache = [[NSMapTable alloc] initWithKeyOptions:NSPointerFunctionsStrongMemory valueOptions:NSPointerFunctionsWeakMemory capacity:0];
     self.weakCacheLock = dispatch_semaphore_create(1);
     
+    // 注册通知监听系统内存警告
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(didReceiveMemoryWarning:)
                                                  name:UIApplicationDidReceiveMemoryWarningNotification
@@ -77,11 +80,21 @@ static void * SDMemoryCacheContext = &SDMemoryCacheContext;
 }
 
 // `setObject:forKey:` just call this with 0 cost. Override this is enough
+/** 内存缓存保存
+ *  实际上是两次 保存操作
+ *  [super setObject:obj forKey:key cost:g];  调用父类的方法 使用 NSCache 系统缓存
+ *  [self.weakCache setObject:obj forKey:key];  然后在给当前缓存内的 NSMapTable` 设置值
+ *  这样就是拿空间换时间的操作，相当于在内存中是有两份数据的，
+ *  如果第一份没有，就去拿第二份，这样就保证了快速度的响应.
+ *  (收到内存警告的时候 NSCache 会释放缓存，但是释放是没有顺序的，有可能刚缓存的被清除了，加入NSMapTable是为了实现先进先出的顺序清除缓存，而且还能保证读取数据的速度)
+ */
 - (void)setObject:(id)obj forKey:(id)key cost:(NSUInteger)g {
+    // 先将对象缓存到 NSCache 中
     [super setObject:obj forKey:key cost:g];
     if (!self.config.shouldUseWeakMemoryCache) {
         return;
     }
+    // 再存到 weakCache (NSMapTable中)
     if (key && obj) {
         // Store weak cache
         SD_LOCK(self.weakCacheLock);
@@ -90,13 +103,20 @@ static void * SDMemoryCacheContext = &SDMemoryCacheContext;
     }
 }
 
+/** 内存缓存取值  (典型的以空间换时间)
+ * [super objectForKey:key]； 先去系统 NSCache 中取
+ * obj = [self.weakCache objectForKey:key]; 如果没有再去 MapTable 中取
+ */
+
 - (id)objectForKey:(id)key {
+    // 先去 NSCache 中取缓存对象
     id obj = [super objectForKey:key];
     if (!self.config.shouldUseWeakMemoryCache) {
         return obj;
     }
     if (key && !obj) {
         // Check weak cache
+        // 如果没有取到，再去 NSMapTable 中取缓存
         SD_LOCK(self.weakCacheLock);
         obj = [self.weakCache objectForKey:key];
         SD_UNLOCK(self.weakCacheLock);
@@ -104,8 +124,11 @@ static void * SDMemoryCacheContext = &SDMemoryCacheContext;
             // Sync cache
             NSUInteger cost = 0;
             if ([obj isKindOfClass:[UIImage class]]) {
+                /// 内存缓存缓存的就是 UIImage
+                // 计算 obj 对象占用的空间大小
                 cost = [(UIImage *)obj sd_memoryCost];
             }
+            // 如果取到再次保存到 NSCache 中
             [super setObject:obj forKey:key cost:cost];
         }
     }
@@ -141,6 +164,7 @@ static void * SDMemoryCacheContext = &SDMemoryCacheContext;
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary<NSKeyValueChangeKey,id> *)change context:(void *)context {
     if (context == SDMemoryCacheContext) {
+        // 监听内存的设置，同步到 NSCache 中 totalCostLimit 、countLimit 
         if ([keyPath isEqualToString:NSStringFromSelector(@selector(maxMemoryCost))]) {
             self.totalCostLimit = self.config.maxMemoryCost;
         } else if ([keyPath isEqualToString:NSStringFromSelector(@selector(maxMemoryCount))]) {

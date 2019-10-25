@@ -15,7 +15,7 @@
  */
 @interface UIView (WebCacheOperation)
 
-/**
+/** 根据 key 找到对应的操作
  *  Get the image load operation for key
  *
  *  @param key key for identifying the operations
@@ -25,7 +25,7 @@
 
 /**
  *  Set the image load operation (storage in a UIView based weak map table)
- *
+ *  根据 key 设置图像加载操作（存储在 和 UIView 做绑定的字典里面）
  *  @param operation the operation
  *  @param key       key for storing the operation
  */
@@ -33,12 +33,12 @@
 
 /**
  *  Cancel all operations for the current UIView and key
- *
+ *  用这个key找到当前UIView上面的所有操作并取消
  *  @param key key for identifying the operations
  */
 - (void)sd_cancelImageLoadOperationWithKey:(nullable NSString *)key;
 
-/**
+/** 只需要移除与当前UIView和key相对应的操作而不取消它们
  *  Just remove the operations corresponding to the current UIView and key without cancelling them
  *
  *  @param key key for identifying the operations

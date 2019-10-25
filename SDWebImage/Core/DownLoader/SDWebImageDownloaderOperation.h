@@ -44,6 +44,11 @@
 
 /**
  The download operation class for SDWebImageDownloader.
+ * 继承自 NSOperation, 重写了 Start 方法
+ * 在 Start 时，如果 app 进入后台，就取消下载.
+ * 设置 NSURLSession 之后就下载任务
+ * 其中手动(KVC)出发了 isFinished isExecuting
+ * 然后就是在 NSURLSessionTaskDelegate，NSURLSessionDataDelegate，设置显示就回调
  */
 @interface SDWebImageDownloaderOperation : NSOperation <SDWebImageDownloaderOperation>
 

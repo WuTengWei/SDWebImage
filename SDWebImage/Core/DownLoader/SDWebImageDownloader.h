@@ -16,73 +16,82 @@
 #import "SDWebImageDownloaderDecryptor.h"
 #import "SDImageLoader.h"
 
-/// Downloader options
+/*
+  1）、定义了下载队列NSOperationQueue *downloadQueue，以及根据下载的优先级添加到NSOperation *lastAddedOperation
+ （2）、生成SDWebImageDownloaderOperation下载的实例对象，放到下载队列中，并实现相应的NSURLSessionDataDelegate 代理方法，接收数据，并将数据传输到相应的operation类中处理
+ （3）、请求header的添加接口、取消下载任务等
+ */
+
+/// Downloader options  下载操作的枚举
 typedef NS_OPTIONS(NSUInteger, SDWebImageDownloaderOptions) {
-    /**
+    /** 将下载放在低队列优先级和任务优先级中
      * Put the download in the low queue priority and task priority.
      */
     SDWebImageDownloaderLowPriority = 1 << 0,
     
-    /**
+    /** 此标志支持渐进式下载，图像在下载期间按浏览器的方式逐步显示
      * This flag enables progressive download, the image is displayed progressively during download as a browser would do.
      */
     SDWebImageDownloaderProgressiveLoad = 1 << 1,
 
-    /**
+    /**默认情况下，http请求阻止使用NSURLCache对象。如果设置了这个标记，则NSURLCache会被http请求使用
      * By default, request prevent the use of NSURLCache. With this flag, NSURLCache
      * is used with default policies.
      */
     SDWebImageDownloaderUseNSURLCache = 1 << 2,
 
-    /**
+    /** 如果image/imageData是从NSURLCache返回的。则completion这个回调会返回nil
      * Call completion block with nil image/imageData if the image was read from NSURLCache
      * And the error code is `SDWebImageErrorCacheNotModified`
      * This flag should be combined with `SDWebImageDownloaderUseNSURLCache`.
      */
     SDWebImageDownloaderIgnoreCachedResponse = 1 << 3,
     
-    /**
+    /** 如果app进入后台模式，是否继续下载。这个是通过在后台申请时间来完成这个操作。如果指定的时间范围内没有完成，则直接取消下载
      * In iOS 4+, continue the download of the image if the app goes to background. This is achieved by asking the system for
      * extra time in background to let the request finish. If the background task expires the operation will be cancelled.
      */
     SDWebImageDownloaderContinueInBackground = 1 << 4,
 
-    /**
+    /**处理缓存在`NSHTTPCookieStore`对象里面的cookie。通过设置`NSMutableURLRequest.HTTPShouldHandleCookies = YES`来实现的
      * Handles cookies stored in NSHTTPCookieStore by setting 
      * NSMutableURLRequest.HTTPShouldHandleCookies = YES;
      */
     SDWebImageDownloaderHandleCookies = 1 << 5,
 
-    /**
+    /**允许非信任的SSL证书请求
+     * 在测试的时候很有用。但是正式环境要小心使用
      * Enable to allow untrusted SSL certificates.
      * Useful for testing purposes. Use with caution in production.
      */
     SDWebImageDownloaderAllowInvalidSSLCertificates = 1 << 6,
 
-    /**
+    /** 默认情况下，图片加载的顺序是根据加入队列的顺序加载的。但是这个标记会把任务加入队列的最前面
      * Put the download in the high queue priority and task priority.
      */
     SDWebImageDownloaderHighPriority = 1 << 7,
     
-    /**
+    /**默认情况下，图片会按照他的原始大小来解码显示。
+     * 这个属性会调整图片的尺寸到合适的大小根据设备的内存限制。
+     * 如果`SDWebImageProgressiveDownload`标记被设置了，则这个flag不起作用
      * By default, images are decoded respecting their original size. On iOS, this flag will scale down the
      * images to a size compatible with the constrained memory of devices.
      * This flag take no effect if `SDWebImageDownloaderAvoidDecodeImage` is set. And it will be ignored if `SDWebImageDownloaderProgressiveLoad` is set.
      */
     SDWebImageDownloaderScaleDownLargeImages = 1 << 8,
     
-    /**
+    /**加载图片时，图片的解压缩操作再子线程处理转化成bitmap再进行绘制
      * By default, we will decode the image in the background during cache query and download from the network. This can help to improve performance because when rendering image on the screen, it need to be firstly decoded. But this happen on the main queue by Core Animation.
      * However, this process may increase the memory usage as well. If you are experiencing a issue due to excessive memory consumption, This flag can prevent decode the image.
      */
     SDWebImageDownloaderAvoidDecodeImage = 1 << 9,
     
-    /**
+    /**默认情况下，我们解码动画图像。此标志仅能强制解码第一帧并产生静态图像。
      * By default, we decode the animated image. This flag can force decode the first frame only and produece the static image.
      */
     SDWebImageDownloaderDecodeFirstFrameOnly = 1 << 10,
     
-    /**
+    /**默认情况下，对于“SDAnimatedImage”，我们在渲染时解码动画图像帧，以减少内存使用。但是，当大量imageViews共享动画图像时，可以指定将所有帧预加载到内存中，以减少CPU使用。这将在后台队列中触发“preloadAllAnimatedImageFrames”(仅限磁盘缓存和下载)
      * By default, for `SDAnimatedImage`, we decode the animated image frame during rendering to reduce memory usage. This flag actually trigger `preloadAllAnimatedImageFrames = YES` after image load from network
      */
     SDWebImageDownloaderPreloadAllFrames = 1 << 11,
@@ -103,12 +112,12 @@ FOUNDATION_EXPORT NSNotificationName _Nonnull const SDWebImageDownloadFinishNoti
 typedef SDImageLoaderProgressBlock SDWebImageDownloaderProgressBlock;
 typedef SDImageLoaderCompletedBlock SDWebImageDownloaderCompletedBlock;
 
-/**
+/** 每一个下载任务都会有一个 token 相关联，可以用来取消一个下载任务
  *  A token associated with each download. Can be used to cancel a download
  */
 @interface SDWebImageDownloadToken : NSObject <SDWebImageOperation>
 
-/**
+/** 取消当前下载
  Cancel the current download.
  */
 - (void)cancel;
@@ -131,18 +140,18 @@ typedef SDImageLoaderCompletedBlock SDWebImageDownloaderCompletedBlock;
 @end
 
 
-/**
+/**异步下载专用和优化的图像加载。
  * Asynchronous downloader dedicated and optimized for image loading.
  */
 @interface SDWebImageDownloader : NSObject
 
-/**
+/**下载的配置 最大并发 6  超时时长15s 等等
  * Downloader Config object - storing all kind of settings.
  * Most config properties support dynamic changes during download, except something like `sessionConfiguration`, see `SDWebImageDownloaderConfig` for more detail.
  */
 @property (nonatomic, copy, readonly, nonnull) SDWebImageDownloaderConfig *config;
 
-/**
+/**设置请求修改器，以在加载图像之前修改原始下载请求。
  * Set the request modifier to modify the original download request before image load.
  * This request modifier method will be called for each downloading image request. Return the original request means no modification. Return nil will cancel the download request.
  * Defaults to nil, means does not modify the original download request.
@@ -167,23 +176,23 @@ typedef SDImageLoaderCompletedBlock SDWebImageDownloaderCompletedBlock;
  */
 @property (nonatomic, strong, nullable) id<SDWebImageDownloaderDecryptor> decryptor;
 
-/**
+/** 定义NSURLSession的configuration
  * The configuration in use by the internal NSURLSession. If you want to provide a custom sessionConfiguration, use `SDWebImageDownloaderConfig.sessionConfiguration` and create a new downloader instance.
  @note This is immutable according to NSURLSession's documentation. Mutating this object directly has no effect.
  */
 @property (nonatomic, readonly, nonnull) NSURLSessionConfiguration *sessionConfiguration;
 
-/**
+/** 获取/设置 下载队列 suspended 状态
  * Gets/Sets the download queue suspension state.
  */
 @property (nonatomic, assign, getter=isSuspended) BOOL suspended;
 
-/**
+/** 当前的下载任务数
  * Shows the current amount of downloads that still need to be downloaded
  */
 @property (nonatomic, assign, readonly) NSUInteger currentDownloadCount;
 
-/**
+/** 返回全局的下载器
  *  Returns the global shared downloader instance. Which use the `SDWebImageDownloaderConfig.defaultDownloaderConfig` config.
  */
 @property (nonatomic, class, readonly, nonnull) SDWebImageDownloader *sharedDownloader;
@@ -197,7 +206,7 @@ typedef SDImageLoaderCompletedBlock SDWebImageDownloaderCompletedBlock;
  */
 - (nonnull instancetype)initWithConfig:(nullable SDWebImageDownloaderConfig *)config NS_DESIGNATED_INITIALIZER;
 
-/**
+/**设置请求头信息
  * Set a value for a HTTP header to be appended to each download HTTP request.
  *
  * @param value The value for the header field. Use `nil` value to remove the header field.
@@ -205,16 +214,16 @@ typedef SDImageLoaderCompletedBlock SDWebImageDownloaderCompletedBlock;
  */
 - (void)setValue:(nullable NSString *)value forHTTPHeaderField:(nullable NSString *)field;
 
-/**
+/** 获取请求头信息
  * Returns the value of the specified HTTP header field.
  *
  * @return The value associated with the header field field, or `nil` if there is no corresponding header field.
  */
 - (nullable NSString *)valueForHTTPHeaderField:(nullable NSString *)field;
 
-/**
+/** 根据给的 URL 创建一个异步下载的实例
  * Creates a SDWebImageDownloader async downloader instance with a given URL
- *
+ * 在代理方法中获取下载完成或者报错的信息
  * The delegate will be informed when the image is finish downloaded or an error has happen.
  *
  * @see SDWebImageDownloaderDelegate
@@ -283,12 +292,12 @@ typedef SDImageLoaderCompletedBlock SDWebImageDownloaderCompletedBlock;
                                                   progress:(nullable SDWebImageDownloaderProgressBlock)progressBlock
                                                  completed:(nullable SDWebImageDownloaderCompletedBlock)completedBlock;
 
-/**
+/** 取消当前队列中的所有的操作
  * Cancels all download operations in the queue
  */
 - (void)cancelAllDownloads;
 
-/**
+/** 取消等待的操作 
  * Invalidates the managed session, optionally canceling pending operations.
  * @note If you use custom downloader instead of the shared downloader, you need call this method when you do not use it to avoid memory leak
  * @param cancelPendingOperations Whether or not to cancel pending operations.

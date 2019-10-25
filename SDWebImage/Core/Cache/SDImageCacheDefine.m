@@ -13,6 +13,7 @@
 #import "UIImage+Metadata.h"
 #import "SDInternalMacros.h"
 
+// 主要是对图片进行 Decode 操作 
 UIImage * _Nullable SDImageCacheDecodeImageData(NSData * _Nonnull imageData, NSString * _Nonnull cacheKey, SDWebImageOptions options, SDWebImageContext * _Nullable context) {
     UIImage *image;
     BOOL decodeFirstFrame = SD_OPTIONS_CONTAINS(options, SDWebImageDecodeFirstFrameOnly);

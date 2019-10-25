@@ -23,9 +23,9 @@ static SDWebImageDownloaderConfig * _defaultDownloaderConfig;
 - (instancetype)init {
     self = [super init];
     if (self) {
-        _maxConcurrentDownloads = 6;
-        _downloadTimeout = 15.0;
-        _executionOrder = SDWebImageDownloaderFIFOExecutionOrder;
+        _maxConcurrentDownloads = 6;   // 下载的最大并发数是 6
+        _downloadTimeout = 15.0;    // 每个下载操作的超时时长是 15 秒
+        _executionOrder = SDWebImageDownloaderFIFOExecutionOrder;   // 下载操作的s执行顺序是先进先出 
     }
     return self;
 }

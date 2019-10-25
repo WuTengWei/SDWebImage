@@ -27,6 +27,7 @@
     
     // File signatures table: http://www.garykessler.net/library/file_sigs.html
     uint8_t c;
+    // 获取 data 的第一个字节，这里存着图片的类型
     [data getBytes:&c length:1];
     switch (c) {
         case 0xFF:
@@ -69,6 +70,7 @@
     return SDImageFormatUndefined;
 }
 
+// NSData 中对应的图片类型
 + (nonnull CFStringRef)sd_UTTypeFromImageFormat:(SDImageFormat)format {
     CFStringRef UTType;
     switch (format) {

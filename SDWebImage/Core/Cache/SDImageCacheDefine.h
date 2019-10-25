@@ -13,17 +13,17 @@
 
 /// Image Cache Type
 typedef NS_ENUM(NSInteger, SDImageCacheType) {
-    /**
+    /** 不是从缓存中拿到的，从网上下载的
      * For query and contains op in response, means the image isn't available in the image cache
      * For op in request, this type is not available and take no effect.
      */
     SDImageCacheTypeNone,
-    /**
+    /** 从磁盘中获取的
      * For query and contains op in response, means the image was obtained from the disk cache.
      * For op in request, means process only disk cache.
      */
     SDImageCacheTypeDisk,
-    /**
+    /** 从内存中获取的
      * For query and contains op in response, means the image was obtained from the memory cache.
      * For op in request, means process only memory cache.
      */
@@ -35,13 +35,16 @@ typedef NS_ENUM(NSInteger, SDImageCacheType) {
     SDImageCacheTypeAll
 };
 
+// 在缓存中根据指定key查找图片的回调块
 typedef void(^SDImageCacheCheckCompletionBlock)(BOOL isInCache);
+// 计算磁盘缓存图片个数和占用内存大小的回调块
 typedef void(^SDImageCacheCalculateSizeBlock)(NSUInteger fileCount, NSUInteger totalSize);
 typedef NSString * _Nullable (^SDImageCacheAdditionalCachePathBlock)(NSString * _Nonnull key);
+// 查找缓存完成后的回调块
 typedef void(^SDImageCacheQueryCompletionBlock)(UIImage * _Nullable image, NSData * _Nullable data, SDImageCacheType cacheType);
 typedef void(^SDImageCacheContainsCompletionBlock)(SDImageCacheType containsCacheType);
 
-/**
+/** 从缓存中查询图像的解码过程
  This is the built-in decoding process for image query from cache.
  @note If you want to implement your custom loader with `queryImageForKey:options:context:completion:` API, but also want to keep compatible with SDWebImage's behavior, you'd better use this to produce image.
  

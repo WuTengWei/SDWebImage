@@ -60,6 +60,7 @@ static void * SDWebImageDownloaderContext = &SDWebImageDownloaderContext;
 #pragma clang diagnostic pop
 
         // Remove observer in case it was previously added.
+        // 添加之前先移除之前添加的监听
         [[NSNotificationCenter defaultCenter] removeObserver:activityIndicator name:SDWebImageDownloadStartNotification object:nil];
         [[NSNotificationCenter defaultCenter] removeObserver:activityIndicator name:SDWebImageDownloadStopNotification object:nil];
 
@@ -156,6 +157,7 @@ static void * SDWebImageDownloaderContext = &SDWebImageDownloaderContext;
     }
 }
 
+// 设置 header
 - (void)setValue:(nullable NSString *)value forHTTPHeaderField:(nullable NSString *)field {
     if (!field) {
         return;
@@ -164,7 +166,7 @@ static void * SDWebImageDownloaderContext = &SDWebImageDownloaderContext;
     [self.HTTPHeaders setValue:value forKey:field];
     SD_UNLOCK(self.HTTPHeadersLock);
 }
-
+// 获取 header
 - (nullable NSString *)valueForHTTPHeaderField:(nullable NSString *)field {
     if (!field) {
         return nil;
@@ -186,7 +188,7 @@ static void * SDWebImageDownloaderContext = &SDWebImageDownloaderContext;
                                                  completed:(SDWebImageDownloaderCompletedBlock)completedBlock {
     return [self downloadImageWithURL:url options:options context:nil progress:progressBlock completed:completedBlock];
 }
-
+// 下载操作
 - (nullable SDWebImageDownloadToken *)downloadImageWithURL:(nullable NSURL *)url
                                                    options:(SDWebImageDownloaderOptions)options
                                                    context:(nullable SDWebImageContext *)context
@@ -203,9 +205,13 @@ static void * SDWebImageDownloaderContext = &SDWebImageDownloaderContext;
     
     SD_LOCK(self.operationsLock);
     id downloadOperationCancelToken;
+    // 获取当前的 operation
     NSOperation<SDWebImageDownloaderOperation> *operation = [self.URLOperations objectForKey:url];
+    // 如果发现operation为nil/完成/取消，但是并没有从当前的urlOperations中移除
     // There is a case that the operation may be marked as finished or cancelled, but not been removed from `self.URLOperations`.
     if (!operation || operation.isFinished || operation.isCancelled) {
+        
+        // 创建一个当前任务的 operation 请求
         operation = [self createDownloaderOperationWithUrl:url options:options context:context];
         if (!operation) {
             SD_UNLOCK(self.operationsLock);
@@ -222,20 +228,25 @@ static void * SDWebImageDownloaderContext = &SDWebImageDownloaderContext;
                 return;
             }
             SD_LOCK(self.operationsLock);
+            // 完成以后从 URLOperations 中移除
             [self.URLOperations removeObjectForKey:url];
             SD_UNLOCK(self.operationsLock);
         };
         self.URLOperations[url] = operation;
         // Add operation to operation queue only after all configuration done according to Apple's doc.
         // `addOperation:` does not synchronously execute the `operation.completionBlock` so this will not cause deadlock.
+        // 操作添加到队列中
         [self.downloadQueue addOperation:operation];
         downloadOperationCancelToken = [operation addHandlersForProgress:progressBlock completed:completedBlock];
     } else {
+        // 当我们重用下载操作来附加更多的回调时，可能会出现线程安全问题，因为回调的getter可能在另一个队列中
+        // 因此我们在这里锁定操作，在' SDWebImageDownloaderOperation '中，我们使用' @synchonzied (self) '来确保这两个类之间的线程安全。
         // When we reuse the download operation to attach more callbacks, there may be thread safe issue because the getter of callbacks may in another queue (decoding queue or delegate queue)
         // So we lock the operation here, and in `SDWebImageDownloaderOperation`, we use `@synchonzied (self)`, to ensure the thread safe between these two classes.
         @synchronized (operation) {
             downloadOperationCancelToken = [operation addHandlersForProgress:progressBlock completed:completedBlock];
         }
+        // 还没执行 可以修改优先级 
         if (!operation.isExecuting) {
             if (options & SDWebImageDownloaderHighPriority) {
                 operation.queuePriority = NSOperationQueuePriorityHigh;
@@ -247,7 +258,7 @@ static void * SDWebImageDownloaderContext = &SDWebImageDownloaderContext;
         }
     }
     SD_UNLOCK(self.operationsLock);
-    
+    //包装token，包含url、request、downloader、downloadOperationCancelToken等
     SDWebImageDownloadToken *token = [[SDWebImageDownloadToken alloc] initWithDownloadOperation:operation];
     token.url = url;
     token.request = operation.request;
@@ -256,19 +267,27 @@ static void * SDWebImageDownloaderContext = &SDWebImageDownloaderContext;
     return token;
 }
 
+// 创建一个SDWebImageDownloaderOperation对象来做下载操作，指定缓存策略、cookie策略、自定义请求头域等
 - (nullable NSOperation<SDWebImageDownloaderOperation> *)createDownloaderOperationWithUrl:(nonnull NSURL *)url
                                                                                   options:(SDWebImageDownloaderOptions)options
                                                                                   context:(nullable SDWebImageContext *)context {
+    // 超时时长
     NSTimeInterval timeoutInterval = self.config.downloadTimeout;
     if (timeoutInterval == 0.0) {
         timeoutInterval = 15.0;
     }
     
+    // 为了防止潜在的重复缓存(NSURLCache + SDImageCache)，我们禁用了图像请求的缓存
     // In order to prevent from potential duplicate caching (NSURLCache + SDImageCache) we disable the cache for image requests if told otherwise
+    // 请求的缓存策略  如果设置了 NSURLCache 使用 NSURLRequestUseProtocolCachePolicy  否者使用 NSURLRequestReloadIgnoringLocalCacheData 
     NSURLRequestCachePolicy cachePolicy = options & SDWebImageDownloaderUseNSURLCache ? NSURLRequestUseProtocolCachePolicy : NSURLRequestReloadIgnoringLocalCacheData;
+    
+    //创建请求
     NSMutableURLRequest *mutableRequest = [[NSMutableURLRequest alloc] initWithURL:url cachePolicy:cachePolicy timeoutInterval:timeoutInterval];
     mutableRequest.HTTPShouldHandleCookies = SD_OPTIONS_CONTAINS(options, SDWebImageDownloaderHandleCookies);
     mutableRequest.HTTPShouldUsePipelining = YES;
+    
+    // 设置请求头
     SD_LOCK(self.HTTPHeadersLock);
     mutableRequest.allHTTPHeaderFields = self.HTTPHeaders;
     SD_UNLOCK(self.HTTPHeadersLock);
@@ -281,7 +300,7 @@ static void * SDWebImageDownloaderContext = &SDWebImageDownloaderContext;
         mutableContext = [NSMutableDictionary dictionary];
     }
     
-    // Request Modifier
+    // Request Modifier  修改请求
     id<SDWebImageDownloaderRequestModifier> requestModifier;
     if ([context valueForKey:SDWebImageContextDownloadRequestModifier]) {
         requestModifier = [context valueForKey:SDWebImageContextDownloadRequestModifier];
@@ -290,7 +309,7 @@ static void * SDWebImageDownloaderContext = &SDWebImageDownloaderContext;
     }
     
     NSURLRequest *request;
-    if (requestModifier) {
+    if (requestModifier) { // 根据是否修改返回 request
         NSURLRequest *modifiedRequest = [requestModifier modifiedRequestWithRequest:[mutableRequest copy]];
         // If modified request is nil, early return
         if (!modifiedRequest) {
@@ -301,7 +320,8 @@ static void * SDWebImageDownloaderContext = &SDWebImageDownloaderContext;
     } else {
         request = [mutableRequest copy];
     }
-    // Response Modifier
+    
+    // Response Modifier  修改响应
     id<SDWebImageDownloaderResponseModifier> responseModifier;
     if ([context valueForKey:SDWebImageContextDownloadResponseModifier]) {
         responseModifier = [context valueForKey:SDWebImageContextDownloadResponseModifier];
@@ -311,7 +331,7 @@ static void * SDWebImageDownloaderContext = &SDWebImageDownloaderContext;
     if (responseModifier) {
         mutableContext[SDWebImageContextDownloadResponseModifier] = responseModifier;
     }
-    // Decryptor
+    // Decryptor 解码
     id<SDWebImageDownloaderDecryptor> decryptor;
     if ([context valueForKey:SDWebImageContextDownloadDecryptor]) {
         decryptor = [context valueForKey:SDWebImageContextDownloadDecryptor];
@@ -324,33 +344,41 @@ static void * SDWebImageDownloaderContext = &SDWebImageDownloaderContext;
     
     context = [mutableContext copy];
     
-    // Operation Class
+    // Operation Class  获取 SDWebImageDownloaderOperation 子类 
     Class operationClass = self.config.operationClass;
     if (operationClass && [operationClass isSubclassOfClass:[NSOperation class]] && [operationClass conformsToProtocol:@protocol(SDWebImageDownloaderOperation)]) {
         // Custom operation class
     } else {
         operationClass = [SDWebImageDownloaderOperation class];
     }
+    
+    // 获取一个 operation
     NSOperation<SDWebImageDownloaderOperation> *operation = [[operationClass alloc] initWithRequest:request inSession:self.session options:options context:context];
     
     if ([operation respondsToSelector:@selector(setCredential:)]) {
+        // 配置验证信息
         if (self.config.urlCredential) {
+            //ssl 验证
             operation.credential = self.config.urlCredential;
         } else if (self.config.username && self.config.password) {
             operation.credential = [NSURLCredential credentialWithUser:self.config.username password:self.config.password persistence:NSURLCredentialPersistenceForSession];
         }
     }
         
+    // progress 的时间间隔
     if ([operation respondsToSelector:@selector(setMinimumProgressInterval:)]) {
         operation.minimumProgressInterval = MIN(MAX(self.config.minimumProgressInterval, 0), 1);
     }
     
+    // operation 的优先级
     if (options & SDWebImageDownloaderHighPriority) {
         operation.queuePriority = NSOperationQueuePriorityHigh;
     } else if (options & SDWebImageDownloaderLowPriority) {
         operation.queuePriority = NSOperationQueuePriorityLow;
     }
     
+    // 执行顺序
+    // 如果是LIFO这种模式，则让前面的operation依赖于最新添加的operation
     if (self.config.executionOrder == SDWebImageDownloaderLIFOExecutionOrder) {
         // Emulate LIFO execution order by systematically, each previous adding operation can dependency the new operation
         // This can gurantee the new operation to be execulated firstly, even if when some operations finished, meanwhile you appending new operations
@@ -414,6 +442,16 @@ static void * SDWebImageDownloaderContext = &SDWebImageDownloaderContext;
 
 #pragma mark NSURLSessionDataDelegate
 
+/**
+   使用 系统 NSURLSession 创建 task ,在本类中它实现了 NSURLSessionTaskDelegate, 当数据下载完成，就去显示.
+ * 主要是设置下载队列
+ * 拼接 HTTPHeader
+ * 组装 SDWebImageDownloaderOperation
+ * 设置 Credential
+ * 配置 NSOperation 的优先级
+ * 返回一个 SDWebImageDownloaderOperation
+ * 虽然设置了 NSURLSessionTaskDelegate 的代理在这个类中，但是实际还是把结果交费给了 SDWebImageDownloaderOperation, 统一处理
+ */
 - (void)URLSession:(NSURLSession *)session
           dataTask:(NSURLSessionDataTask *)dataTask
 didReceiveResponse:(NSURLResponse *)response

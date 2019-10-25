@@ -68,7 +68,9 @@
 @end
 
 /**
- A memory cache which auto purge the cache on memory warning and support weak cache.
+ *  A memory cache which auto purge the cache on memory warning and support weak cache.
+ *  继承自系统的 NSCache
+ *  主要是操作内存的 删除 和 保存 
  */
 @interface SDMemoryCache <KeyType, ObjectType> : NSCache <KeyType, ObjectType> <SDMemoryCache>
 

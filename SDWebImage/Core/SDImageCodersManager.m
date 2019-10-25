@@ -33,6 +33,7 @@
     return instance;
 }
 
+// 初始化本地可以进行code的类SDImageGIFCoder、SDImageAPNGCoder等都是单例
 - (instancetype)init {
     if (self = [super init]) {
         // initialize with default coders
@@ -101,6 +102,7 @@
     return NO;
 }
 
+// 解码处理
 - (UIImage *)decodedImageWithData:(NSData *)data options:(nullable SDImageCoderOptions *)options {
     if (!data) {
         return nil;
@@ -117,6 +119,7 @@
     return image;
 }
 
+// 编码处理  
 - (NSData *)encodedDataWithImage:(UIImage *)image format:(SDImageFormat)format options:(nullable SDImageCoderOptions *)options {
     if (!image) {
         return nil;

@@ -17,12 +17,12 @@ typedef NS_ENUM(NSUInteger, SDImageCachesManagerOperationPolicy) {
     SDImageCachesManagerOperationPolicyLowestOnly // process the lowest priority cache only
 };
 
-/**
+/** 主要是操作  SDImageCache  类，对缓存进行   存储,  删除,  清理,  查询
  A caches manager to manage multiple caches.
  */
 @interface SDImageCachesManager : NSObject <SDImageCache>
 
-/**
+/** 返回全局共享的缓存管理器实例
  Returns the global shared caches manager instance. By default we will set [`SDImageCache.sharedImageCache`] into the caches array.
  */
 @property (nonatomic, class, readonly, nonnull) SDImageCachesManager *sharedManager;

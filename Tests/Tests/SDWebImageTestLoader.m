@@ -20,6 +20,7 @@
     return YES;
 }
 
+// 下载图片
 - (id<SDWebImageOperation>)requestImageWithURL:(NSURL *)url options:(SDWebImageOptions)options context:(SDWebImageContext *)context progress:(SDImageLoaderProgressBlock)progressBlock completed:(SDImageLoaderCompletedBlock)completedBlock {
     NSURLRequest *request = [NSURLRequest requestWithURL:url];
     
@@ -37,6 +38,7 @@
             }
         }
     }];
+    // 监听下载进度
     [self.KVOController observe:task keyPath:NSStringFromSelector(@selector(countOfBytesReceived)) options:NSKeyValueObservingOptionNew block:^(id  _Nullable observer, id  _Nonnull object, NSDictionary<NSString *,id> * _Nonnull change) {
         NSURLSessionTask *sessionTask = object;
         NSInteger receivedSize = sessionTask.countOfBytesReceived;

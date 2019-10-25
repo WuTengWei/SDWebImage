@@ -34,19 +34,19 @@ typedef NS_ENUM(NSInteger, SDWebImageDownloaderExecutionOrder) {
  */
 @property (nonatomic, class, readonly, nonnull) SDWebImageDownloaderConfig *defaultDownloaderConfig;
 
-/**
+/** 并发下载的最大数量 默认是 6
  * The maximum number of concurrent downloads.
  * Defaults to 6.
  */
 @property (nonatomic, assign) NSInteger maxConcurrentDownloads;
 
-/**
+/** 每个下载操作的超时时长 默认是15秒
  * The timeout value (in seconds) for each download operation.
  * Defaults to 15.0.
  */
 @property (nonatomic, assign) NSTimeInterval downloadTimeout;
 
-/**
+/** 下载进度的最小间隔 0.0 - 1.0   默认是0  每次从URLSession接收新数据时，都立即回调progressBlock
  * The minimum interval about progress percent during network downloading. Which means the next progress callback and current progress callback's progress percent difference should be larger or equal to this value. However, the final finish download progress callback does not get effected.
  * The value should be 0.0-1.0.
  * @note If you're using progressive decoding feature, this will also effect the image refresh rate.
@@ -55,7 +55,7 @@ typedef NS_ENUM(NSInteger, SDWebImageDownloaderExecutionOrder) {
  */
 @property (nonatomic, assign) double minimumProgressInterval;
 
-/**
+/** NSURLSession 使用的自定义会话配置。如果不提供， 默认使用 defaultSessionConfiguration
  * The custom session configuration in use by NSURLSession. If you don't provide one, we will use `defaultSessionConfiguration` instead.
  * Defatuls to nil.
  * @note This property does not support dynamic changes, means it's immutable after the downloader instance initialized.
@@ -71,7 +71,7 @@ typedef NS_ENUM(NSInteger, SDWebImageDownloaderExecutionOrder) {
  */
 @property (nonatomic, assign, nullable) Class operationClass;
 
-/**
+/** 下载操作的执行顺序 默认是 FIFO
  * Changes download operations execution order.
  * Defaults to `SDWebImageDownloaderFIFOExecutionOrder`.
  */

@@ -118,15 +118,31 @@ inline UIImage * _Nullable SDScaledImageForScaleFactor(CGFloat scale, UIImage * 
 
 #pragma mark - Context option
 
+/*
+  一个可扩展的 String 枚举类型
+ typedef NSString * SDWebImageContextOption NS_EXTENSIBLE_STRING_ENUM;
+ */
+
+//作为view类别的 operation key使用，用来存储图像下载的operation，用于支持不同图像加载过程的视图实例。如果为nil，则使用类名作为操作键
 SDWebImageContextOption const SDWebImageContextSetImageOperationKey = @"setImageOperationKey";
+//可以传入一个自定义的SDWebImageManager，默认使用[SDWebImageManager sharedManager]
 SDWebImageContextOption const SDWebImageContextCustomManager = @"customManager";
+//可以传入一个SDImageTransformer类型，用于转换处理加载出来的图片，并将变换后的图像存储到缓存中。如果设置了，则会忽略manager中的transformer
 SDWebImageContextOption const SDWebImageContextImageTransformer = @"imageTransformer";
+//CGFloat原始值，为用于指定图像比例且这个数值应大于等于1.0
 SDWebImageContextOption const SDWebImageContextImageScaleFactor = @"imageScaleFactor";
+//SDImageCacheType原始值，用于刚刚下载图像时指定缓存类型，并将其存储到缓存中。
+//指定SDImageCacheTypeNone：禁用缓存存储; SDImageCacheTypeDisk：仅存储在磁盘缓存中;
+//SDImageCacheTypeMemory：只存储在内存中；SDImageCacheTypeAll：存储在内存缓存和磁盘缓存中。如果没有提供或值无效，则使用SDImageCacheTypeAll
 SDWebImageContextOption const SDWebImageContextStoreCacheType = @"storeCacheType";
+//用于使用SDAnimatedImageView来改善动画图像渲染性能（尤其是大动画图像上的内存使用）
 SDWebImageContextOption const SDWebImageContextOriginalStoreCacheType = @"originalStoreCacheType";
+//用于在加载图片前修改NSURLRequest
 SDWebImageContextOption const SDWebImageContextAnimatedImageClass = @"animatedImageClass";
 SDWebImageContextOption const SDWebImageContextDownloadRequestModifier = @"downloadRequestModifier";
 SDWebImageContextOption const SDWebImageContextDownloadResponseModifier = @"downloadResponseModifier";
 SDWebImageContextOption const SDWebImageContextDownloadDecryptor = @"downloadDecryptor";
+//指定图片的缓存key
 SDWebImageContextOption const SDWebImageContextCacheKeyFilter = @"cacheKeyFilter";
+//转换需要缓存的图片格式，通常用于需要缓存的图片格式与下载的图片格式不相符的时候，如：下载的时候为了节约流量、减少下载时间使用了WebP格式，但是如果缓存也用WebP，每次从缓存中取图片都需要经过一次解压缩，这样是比较影响性能的，就可以使用id
 SDWebImageContextOption const SDWebImageContextCacheSerializer = @"cacheSerializer";

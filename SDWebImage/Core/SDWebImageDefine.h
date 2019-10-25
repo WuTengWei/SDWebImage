@@ -9,7 +9,14 @@
 #import "SDWebImageCompat.h"
 
 typedef void(^SDWebImageNoParamsBlock)(void);
+
+// SDWebImage 5.0 的变化 https://www.jianshu.com/p/cfde8db5c051
+
+// 一个可扩展的 String 枚举类型
 typedef NSString * SDWebImageContextOption NS_EXTENSIBLE_STRING_ENUM;
+
+// SDWebImageContext 是5.0 引入的参数 可以灵活的自定义高级功能
+// SDWebImageContextOption 为 key id 为 value
 typedef NSDictionary<SDWebImageContextOption, id> SDWebImageContext;
 typedef NSMutableDictionary<SDWebImageContextOption, id> SDWebImageMutableContext;
 
